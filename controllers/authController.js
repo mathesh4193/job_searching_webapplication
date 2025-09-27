@@ -1,63 +1,123 @@
 const User = require('../models/user');
-const bcrypt = require('bcryptjs'); // bcryptjs works on all systems
+const bcrypt = require('bcrypt');
 const jwt = require('jsonwebtoken');
-const { JWT_SECRET } = require('../utils/config');
+const { JWT_SECRET, NODE_ENV } = require('../utils/config');
 
 const register = async (req, res) => {
     try {
+        // get the user details from the request body
         const { name, email, password } = req.body;
 
-        if (!name || !email || !password) {
-            return res.status(400).json({ message: 'Name, email, and password are required' });
-        }
+        // check if the user already exists
+        const existingUser = await User.find({ email });
 
-        const existingUser = await User.findOne({ email });
-        if (existingUser) {
+        // if the user already exists, return an error
+        if (existingUser.length > 0) {
             return res.status(400).json({ message: 'User already exists' });
         }
 
+        // hash the password
         const hashedPassword = await bcrypt.hash(password, 10);
 
+        // create a new user object
         const newUser = new User({ name, email, password: hashedPassword });
-        await newUser.save();
 
-        return res.status(201).json({ message: 'User registered successfully' });
+        // save the user to the database
+        const savedUser = await newUser.save();
+
+        // check if the user was saved successfully
+        if (!savedUser) {
+            return res.status(500).json({ message: 'Failed to register user' });
+        }
+
+        // return a success response
+        return res.status(201).json({
+            message: 'User registered successfully',
+        });
     } catch (error) {
-        console.error('Register error:', error);
-        return res.status(500).json({ message: 'Internal Server Error' });
+        res.status(500).json({ message: 'Internal Server Error' });
     }
-};
+}
 
 const login = async (req, res) => {
     try {
+        // get the email and password from the request body
         const { email, password } = req.body;
 
-        if (!email || !password) {
-            return res.status(400).json({ message: 'Email and password are required' });
+        // check if the user exists
+        const user = await User.find({ email });
+
+        // if the user does not exist, return an error
+        if (user.length === 0) {
+            return res.status(400).json({ message: 'User not found' });
         }
 
-        const user = await User.findOne({ email });
-        if (!user) return res.status(400).json({ message: 'Invalid email or password' });
+        // compare the password with the hashed password
+        const isPasswordMatch = await bcrypt.compare(password, user[0].password);
 
-        const isPasswordValid = await bcrypt.compare(password, user.password);
-        if (!isPasswordValid) return res.status(400).json({ message: 'Invalid email or password' });
+        // if the password does not match, return an error
+        if (!isPasswordMatch) {
+            return res.status(400).json({ message: 'Invalid credentials' });
+        }
 
-        const token = jwt.sign({ userId: user._id }, JWT_SECRET, { expiresIn: '24h' });
+        // generate a JWT token
+        const token = jwt.sign({ userId: user[0]._id }, JWT_SECRET, { expiresIn: '24h' });
 
+        // set the token in the response header for httpOnly cookie
         res.cookie('token', token, {
             httpOnly: true,
-            secure: process.env.NODE_ENV === 'production',
-            sameSite: 'Strict',
+            secure: NODE_ENV === 'production', // set secure flag in production
+            sameSite: NODE_ENV === 'production' ? 'none' : 'lax',
+            maxAge: 24 * 60 * 60 * 1000 // 24 hours
+        });
+
+        // return a success response
+        return res.status(200).json({
+            message: 'User logged in successfully',
+        });
+    } catch (error) {
+        res.status(500).json({ message: 'Internal Server Error' });
+    }
+}
+
+const getMe = async (req, res) => {
+    try {
+        // get the userId from the request object
+        const userId = req.userId;
+
+        // get the user details from the database
+        const user = await User.findById(userId).select('-password');
+
+        // if the user does not exist, return an error
+        if (!user) {
+            return res.status(404).json({ message: 'User not found' });
+        }
+
+        // return the user details
+        return res.status(200).json({ user });
+    } catch (error) {
+        res.status(500).json({ message: 'Internal Server Error' });
+    }
+}
+
+const logout = async (req, res) => {
+    try {
+        res.clearCookie('token', {
+            secure: NODE_ENV === 'production',
+            sameSite: NODE_ENV === 'production' ? 'none' : 'lax',
         });
 
         return res.status(200).json({
-            message: 'User logged in successfully',
-            token
-        });
+            message: 'User logged out successfully'
+        })
     } catch (error) {
-        console.error('Login error:', error);
-        return res.status(500).json({ message: 'Internal Server Error' });
+        res.status(500).json({ message: 'Internal Server Error' });
     }
-};
+}
 
-module.exports = { register, login };
+module.exports = {
+    register,
+    login,
+    getMe,
+    logout
+}
