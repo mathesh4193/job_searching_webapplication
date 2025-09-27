@@ -1,11 +1,18 @@
-// import express
 const express = require('express');
+const cookieParser = require('cookie-parser');
+const authRouter = require('./routes/authRoutes');
 
-// create an express application
 const app = express();
 
-// add a test route
-app.use('/api/v1/auth',register);
+// Middleware
+app.use(express.json());
+app.use(cookieParser());
 
-// export the app
+app.get('/', (req, res) => {
+    res.send('Welcome to Job Searching Web App API');
+});
+
+// Routes
+app.use('/api/v1/auth', authRouter);
+
 module.exports = app;
