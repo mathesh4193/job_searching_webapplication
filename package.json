@@ -1,0 +1,32 @@
+{
+  "name": "job_searching_webapplication",
+  "version": "1.0.0",
+  "description": "This is a Job Portal Application that is built using React for the frontend and Node.js with Express for the backend. The application allows users to browse job listings, apply for jobs, and manage their profiles.",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "start": "node server.js"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/mathesh4193/job_searching_webapplication.git"
+  },
+  "keywords": [
+    "job",
+    "search"
+  ],
+  "author": "Mathesh",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/mathesh4193/job_searching_webapplication/issues"
+  },
+  "homepage": "https://github.com/mathesh4193/job_searching_webapplication#readme",
+  "dependencies": {
+    "dotenv": "^17.2.2",
+    "express": "^5.1.0",
+    "mongoose": "^8.18.2"
+  },
+  "devDependencies": {
+    "nodemon": "^3.1.10"
+  }
+}
